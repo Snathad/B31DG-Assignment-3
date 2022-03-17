@@ -1,12 +1,14 @@
-//Charles Birdsall H00219071 10.3.22//
-//B32DG Embedded Software Assignment2//
-//This code gathers together nine tasks with the intention of running as a cyclic executive//
+
+
+//Charles Birdsall H00219071 17.3.22//
+//B32DG Embedded Software Assignment3//
+//This version modifies the code from assignment 2 so that messages are output only when the button is pressed//
 
 //The time library used
 #include <time.h>
 //the ticker libray used
 #include <Ticker.h>
-Ticker mainTimings
+Ticker mainTimings;
 //Establish pins as variables
 const int green_led = 21;
 
@@ -21,6 +23,7 @@ int T;  //The total time variable for calculating task1 pulses
 
 //Task2 variables
 const int push_switch1 = 23; //establish input for push switch
+int switch_flag = LOW;// A flag used to say if the switch was pressed.
 
 //Task 3 variables
 //establish frequency input pin as a variable//
@@ -49,6 +52,8 @@ int error_code = 0; //a flag for whether the error condition is met or not
 
 //Task 8 variables
 const int red_led = 15; //establish the red LED to be used as an error output.
+
+int clock_val=0;
 ///////////////////////////////////////////////////////////////
 
 void setup() {
@@ -92,10 +97,10 @@ void ticker_count(){ //the ticker counter
 int switchread(){
   int ps1s = digitalRead(push_switch1); //set variable that is read from switch value
   if (ps1s==HIGH){
-    Serial.println("Switch is pressed");  //if the input is high print that the button is pressed
+    switch_flag=HIGH;
   }
   else if (ps1s==LOW){
-    Serial.println("Switch is not pressed"); //if the input is low print that the button is not pressed
+    switch_flag=LOW;
   }
 }
 
@@ -192,7 +197,7 @@ void loop() {
     analogue_filter(); //call analogue averaging function
   }
 
-  if (clock_val33==0){
+  if (clock_val%33==0){
     analogue_error(); //call analogue error function
     error_out(); //call analogue error visual alarm function
   }
@@ -209,13 +214,13 @@ void loop() {
     freq_measure();  //call frequency measuring function
   }
 
-  if (clock_val%500==0{
+  if ((clock_val %500==0) && (switch_flag==HIGH)){
+    Serial.println("Switch is pressed");  //if the input is high print that the button is pressed
     Serial.print("frequency = ");
     Serial.print(frequency);
     Serial.println("Hz"); //print the processed frequency
-    Serial.print("Filtered analogue input =")
+    Serial.print("Filtered analogue input =");
     Serial.print(analogue_average);
     Serial.println("V");
-    
   }
   }

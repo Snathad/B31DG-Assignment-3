@@ -54,6 +54,16 @@ int error_code = 0; //a flag for whether the error condition is met or not
 const int red_led = 15; //establish the red LED to be used as an error output.
 
 int clock_val=0;
+
+void wave_out (void *pvParameters);
+void switchread (void *pvParameters);
+void freq_measure (void *pvParameters);
+void analogue_read (void *pvParameters);
+void analogue_filter (void *pvParameters);
+void Task_6 (void *pvParameters);
+void analogue_error (void *pvParameters);
+void error_out (void *pvParameters);
+void log_out (void *pvParameters);
 ///////////////////////////////////////////////////////////////
 
 void setup() {
@@ -77,6 +87,16 @@ void setup() {
 
   mainTimings.attach_ms(10, ticker_count);
   float clock_val=0;
+
+  xTaskCreate(wave_out, “wave_out”, 1024, NULL, 1, NULL);
+  xTaskCreate(switchread, “switchread”, 1024, NULL, 1, NULL);
+  xTaskCreate(freq_measure, “freq_measure”, 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_read, “analogue_read”, 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_filter, “analogue_filter”, 1024, NULL, 1, NULL);
+  xTaskCreate(task6, “task6”, 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_error, “analogue_error”, 1024, NULL, 1, NULL);
+  xTaskCreate(error_out, “error_out”, 1024, NULL, 1, NULL);
+  xTaskCreate(log_out, “log_out”, 1024, NULL, 1, NULL);
 }
 
 
@@ -98,7 +118,7 @@ void ticker_count(void){//the ticker counter
 
 
 ///////////////////////////////////////////////////////////////////////////////
-int switchread(void){
+void switchread(void *parameter){
   for(;;){
     int ps1s = digitalRead(push_switch1); //set variable that is read from switch value
     if (ps1s==HIGH){
@@ -113,7 +133,7 @@ int switchread(void){
 
 ///////////////////////////////////////////////////////////////////////////////
 //This subfunction measures the frequency from the input
-void freq_measure (void){
+void freq_measure (void *parameter){
   for(;;){
     raw_value=digitalRead(freq_in);  //set the raw value to be equal to the digital read from the input
     raw_value_old= raw_value;  //set the old value equal to the current
@@ -140,7 +160,7 @@ void freq_measure (void){
 
 
 ///////////////////////////////////////////////////////////////////////////////
-void analogue_process(void){
+void analogue_process(void *parameter){
   for(;;){
     //Read in the analogue values and shift the previous values along one
     analogue_hist3=analogue_hist2;
@@ -152,7 +172,7 @@ void analogue_process(void){
 
 
 ///////////////////////////////////////////////////////////////////////////////
-void analogue_filter(void){
+void analogue_filter(void *parameter){
   for(;;){
     analogue_average= (analogue_hist0+analogue_hist1+analogue_hist2+analogue_hist3)/4; //take average of analogue values
     //optional prints to show status
@@ -164,7 +184,7 @@ void analogue_filter(void){
 
 
 ///////////////////////////////////////////////////////////////////////////////
-void analogue_error(void){
+void analogue_error(void *parameter){
   for(;;){
     if (analogue_hist0 > (0.5*analogue_max)){ //if condition is met return positive error code
       error_code = 1;
@@ -176,7 +196,7 @@ void analogue_error(void){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void error_out(void){
+void error_out(void *parameter){
   for(;;){
     if (error_code==1){ //if error code is positive, turn red LED on
       digitalWrite(red_led,HIGH);
@@ -188,7 +208,7 @@ void error_out(void){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void task6 (void){//perform 1000 times
+void task6 (void *parameter){//perform 1000 times
   for(;;){
     int i;
     for (i=1; i<1000; +i){

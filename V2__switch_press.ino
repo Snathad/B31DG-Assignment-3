@@ -1,14 +1,12 @@
 
 
-//Charles Birdsall H00219071 31.3.22//
+//Charles Birdsall H00219071 15.4.22//
 //B32DG Embedded Software Assignment3//
-//This version attempts to add RTOS functionality for each task//
+//This version attempts to add RTOS functionality for each task along with a queue system//
 
 //The time library used
 #include <time.h>
-//the ticker libray used
-#include <Ticker.h>
-Ticker mainTimings;
+
 //Establish pins as variables
 const int green_led = 21;
 
@@ -53,8 +51,7 @@ int error_code = 0; //a flag for whether the error condition is met or not
 //Task 8 variables
 const int red_led = 15; //establish the red LED to be used as an error output.
 
-int clock_val=0;
-
+//Define each of the tasks for freeRTOS
 void wave_out (void *pvParameters);
 void switchread (void *pvParameters);
 void freq_measure (void *pvParameters);
@@ -64,6 +61,8 @@ void Task_6 (void *pvParameters);
 void analogue_error (void *pvParameters);
 void error_out (void *pvParameters);
 void log_out (void *pvParameters);
+
+xQueueHandle tasks5and7 = xQueueCreate (2, sizeof(int));
 ///////////////////////////////////////////////////////////////
 
 void setup() {
@@ -88,36 +87,35 @@ void setup() {
   mainTimings.attach_ms(10, ticker_count);
   float clock_val=0;
 
-  xTaskCreate(wave_out, “wave_out”, 1024, NULL, 1, NULL);
-  xTaskCreate(switchread, “switchread”, 1024, NULL, 1, NULL);
-  xTaskCreate(freq_measure, “freq_measure”, 1024, NULL, 1, NULL);
-  xTaskCreate(analogue_read, “analogue_read”, 1024, NULL, 1, NULL);
-  xTaskCreate(analogue_filter, “analogue_filter”, 1024, NULL, 1, NULL);
-  xTaskCreate(task6, “task6”, 1024, NULL, 1, NULL);
-  xTaskCreate(analogue_error, “analogue_error”, 1024, NULL, 1, NULL);
-  xTaskCreate(error_out, “error_out”, 1024, NULL, 1, NULL);
-  xTaskCreate(log_out, “log_out”, 1024, NULL, 1, NULL);
+//This section creates tasks for each function with equal priorities for now
+  xTaskCreate(wave_out, "wave_out", 1024, NULL, 1, NULL);
+  xTaskCreate(switchread, "switchread", 1024, NULL, 1, NULL);
+  xTaskCreate(freq_measure, "freq_measure", 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_read, "analogue_read", 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_filter, "analogue_filter", 1024, NULL, 1, NULL);
+  xTaskCreate(task6, "task6", 1024, NULL, 1, NULL);
+  xTaskCreate(analogue_error, "analogue_error", 1024, NULL, 1, NULL);
+  xTaskCreate(error_out, "error_out", 1024, NULL, 1, NULL);
+  xTaskCreate(log_out, "log_out", 1024, NULL, 1, NULL);
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
-//this subfunction creates a delay based on the clock in the time library. A traditional delay was found to pause the whole code and prevent the button inputs form registering//
-void delay2(void int nosecs){
-  for(;;){
-    clock_t start_time= clock(); //define the start time of the clock
-    while (clock() < start_time + nosecs);  //adds the number of elapsed milliseconds on to the clock so timing can be calculated
-}
+
+///////////////////////////////////////////////////////////////////////////////
+//Task1
+void wave_out(void *parameter){
+   //the task1 watchdog
+    digitalWrite(green_led,HIGH); // turn green led on
+    vTaskDelay(L / portTICK_PERIOD_MS);
+    digitalWrite(green_led,LOW);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-void ticker_count(void){//the ticker counter
-  for(;;){
-    clock_val++;
-  }
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 2
 void switchread(void *parameter){
   for(;;){
     int ps1s = digitalRead(push_switch1); //set variable that is read from switch value
@@ -132,6 +130,7 @@ void switchread(void *parameter){
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 3
 //This subfunction measures the frequency from the input
 void freq_measure (void *parameter){
   for(;;){
@@ -160,6 +159,7 @@ void freq_measure (void *parameter){
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 4
 void analogue_process(void *parameter){
   for(;;){
     //Read in the analogue values and shift the previous values along one
@@ -172,6 +172,7 @@ void analogue_process(void *parameter){
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 5
 void analogue_filter(void *parameter){
   for(;;){
     analogue_average= (analogue_hist0+analogue_hist1+analogue_hist2+analogue_hist3)/4; //take average of analogue values
@@ -184,6 +185,7 @@ void analogue_filter(void *parameter){
 
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 7
 void analogue_error(void *parameter){
   for(;;){
     if (analogue_hist0 > (0.5*analogue_max)){ //if condition is met return positive error code
@@ -196,6 +198,7 @@ void analogue_error(void *parameter){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//task8
 void error_out(void *parameter){
   for(;;){
     if (error_code==1){ //if error code is positive, turn red LED on
@@ -208,6 +211,7 @@ void error_out(void *parameter){
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+//task 6
 void task6 (void *parameter){//perform 1000 times
   for(;;){
     int i;
@@ -216,18 +220,52 @@ void task6 (void *parameter){//perform 1000 times
     }
   }
 }
+///////////////////////////////////////////////////////////////////////////////
+//task 9
+void log_out (void *parameter){
+  if (switch_flag==HIGH){
+    Serial.println("Switch is pressed");  //if the input is high print that the button is pressed
+    Serial.print("frequency = ");
+    Serial.print(frequency);
+    Serial.println("Hz"); //print the processed frequency
+    Serial.print("Filtered analogue input =");
+    Serial.print(analogue_average);
+    Serial.println("V");
+    switch_flag=LOW;
+}
 
+///////////////////////////////////////////////////////////////////////////////
+//The attempted queue linking tasks five and seven. this is not correctly implemented
+void Sender_5and7_queue (void *argument)
+{
+  int i=222;
+  uint32_t TickDelay = pdMS_TO_TICKS(2000);
+  while (1)
+  {
+    if (xQueueSend(tasks5and7, &i, portMAX_DELAY) == pdPASS)
+    {
+      //char *str2 = " Successfully sent to queue\nLeaving SENDER_HPT Task\n\n\n";
+      HAL_UART_Transmit(&huart2, (uint8_t *)str2, strlen (str2), HAL_MAX_DELAY);
+    }
+    vTaskDelay(TickDelay);
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 void loop() {
   
-
-  if (clock_val%2==0){
-    //the task1 watchdog
-    digitalWrite(green_led,HIGH); // turn green led on
-    delay2(L);
-    digitalWrite(green_led,LOW);  
+  if (tasks5and7==0){ //alternate messages for the circumstance that the queue does not fill correctly
+    char *str = "Unable to create queue for tasks 5 and 7\n\n";
+    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), HAL_MAX_DELAY);
   }
+  else
+  {
+    char *str = "Queue successf\n\n";
+    HAL_UART_Transmit(&huart2, (uint8_t *)str, strlen (str), HAL_MAX_DELAY);
+  }
+
+  
+  
 
   if (clock_val%4==0){
     analogue_process(); //call analogue processing function
@@ -251,13 +289,6 @@ void loop() {
     freq_measure();  //call frequency measuring function
   }
 
-  if ((clock_val %500==0) && (switch_flag==HIGH)){
-    Serial.println("Switch is pressed");  //if the input is high print that the button is pressed
-    Serial.print("frequency = ");
-    Serial.print(frequency);
-    Serial.println("Hz"); //print the processed frequency
-    Serial.print("Filtered analogue input =");
-    Serial.print(analogue_average);
-    Serial.println("V");
-  }
+  
+  
   }
